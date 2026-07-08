@@ -38,6 +38,8 @@ import android.util.Log
 import java.util.concurrent.ConcurrentHashMap
 
 data class IvannaEffectProfile(
+    // Nombre visible del preset (usado por la UI, ver companion.ALL)
+    val name: String = "Custom",
     // EQ: 10 bandas, valores en milliBels (-1500 a +1500 mB)
     val eqBands: IntArray = intArrayOf(150, 100, 50, 0, -50, 0, 100, 200, 250, 300),
     // BassBoost: 0–1000
@@ -53,14 +55,17 @@ data class IvannaEffectProfile(
     companion object {
         // Perfiles inspirados en los OmegaParameters existentes
         val FLAT = IvannaEffectProfile(
+            name = "Flat",
             eqBands = intArrayOf(0,0,0,0,0,0,0,0,0,0),
             bassStrength = 0, virtualizerStrength = 0, loudnessGainMb = 0
         )
         val WARM = IvannaEffectProfile(
+            name = "Warm",
             eqBands = intArrayOf(200,150,100,50,0,-50,0,50,100,150),
             bassStrength = 450, virtualizerStrength = 300, loudnessGainMb = 150
         )
         val ROCK_70S = IvannaEffectProfile(
+            name = "Rock 70s",
             // Curva clásica para rock de los 70s: sub-bass controlado,
             // mids presentes, presencia 3-5kHz, brillo suave en treble.
             // Ideal para Zeppelin, Pink Floyd, Sabbath, Eagles.
@@ -72,10 +77,12 @@ data class IvannaEffectProfile(
             compRatio = 3f
         )
         val SPATIAL = IvannaEffectProfile(
+            name = "Spatial",
             eqBands = intArrayOf(100,80,60,0,-80,0,80,160,200,240),
             bassStrength = 300, virtualizerStrength = 800, loudnessGainMb = 0
         )
         val PUNCH = IvannaEffectProfile(
+            name = "Punch",
             eqBands = intArrayOf(300,250,200,100,0,0,100,200,300,350),
             bassStrength = 700, virtualizerStrength = 200, loudnessGainMb = 300,
             compThresholdDb = -12f, compRatio = 5f
@@ -91,9 +98,12 @@ data class IvannaEffectProfile(
             "Punch" to PUNCH
         )
 
+        // Lista de presets para recorrer en la UI (LazyRow de MainActivity)
+        val ALL: List<IvannaEffectProfile> = byName.values.toList()
+
         /** Nombre del primer preset cuyo perfil coincide por referencia con [profile]. */
         fun nameOf(profile: IvannaEffectProfile): String =
-            byName.entries.firstOrNull { it.value === profile }?.key ?: "Warm"
+            byName.entries.firstOrNull { it.value === profile }?.key ?: profile.name
     }
 }
 

@@ -76,6 +76,16 @@ object IvannaNativeLib {
     external fun nativeSetSpatialWidth(width: Float)
     external fun nativeSetSpatialWet(wet: Float)
 
+    // Spatial Engine v2 (JNI real en spatial/spatial_jni.cpp)
+    external fun nativeInitSpatialEngine(sampleRate: Int, bufferSize: Int): Boolean
+    external fun nativeRenderSpatialBlock(
+        input: FloatArray, outL: FloatArray, outR: FloatArray,
+        posX: Int, posY: Int, posZ: Int, mu: Int
+    ): Int
+    external fun nativeReleaseSpatialEngine(): Boolean
+    external fun nativeGetSpatialState(): String
+    external fun nativeSetSpatialParams(paramsJson: String): Boolean
+
     // ═══════════════════════════════════════════════════════════════════════
     //  Autonomous Brain
     // ═══════════════════════════════════════════════════════════════════════

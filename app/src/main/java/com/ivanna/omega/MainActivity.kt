@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.ivanna.omega.audio.*
 import com.ivanna.omega.core.*
+import com.ivanna.omega.ui.theme.IvannaOmegaTheme
 import com.ivanna.omega.dsp.DSPBridge
 import com.ivanna.omega.dsp.DSPState
 import com.ivanna.omega.neuromorphic.IvannaNpeEngine
@@ -98,6 +99,15 @@ class MainActivity : ComponentActivity() {
         var highDb by remember { mutableFloatStateOf(0f) }
         var width by remember { mutableFloatStateOf(1.0f) }
         var masterDb by remember { mutableFloatStateOf(0f) }
+
+        fun pushDSP() {
+            DSPBridge.setParams(
+                drive, wet, 0.7f,
+                0.5f, 0.5f, width / 1.5f,
+                1000f, 0.707f,
+                lowDb, midDb, highDb, 0f, masterDb
+            )
+        }
 
         // Poll genre confidence
         LaunchedEffect(Unit) {
@@ -236,17 +246,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun pushDSP() {
-        DSPBridge.setParams(
-            drive, wet, 0.7f,
-            0.5f, 0.5f, width / 1.5f,
-            1000f, 0.707f,
-            lowDb, midDb, highDb, 0f, masterDb
-        )
-    }
-
     private fun applyPreset(preset: IvannaEffectProfile) {
-        IVANNAApplication.globalEffectManager.applyProfile(preset)
+        (application as IVANNAApplication).globalEffectManager.applyProfile(preset)
     }
 
     private fun checkPermissions() {

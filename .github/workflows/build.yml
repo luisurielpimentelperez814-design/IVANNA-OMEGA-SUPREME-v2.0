@@ -81,7 +81,7 @@ jobs:
         run: |
           curl -sSLO https://github.com/pinterest/ktlint/releases/download/1.2.1/ktlint
           chmod +x ktlint
-          ./ktlint --reporter=plain --v2 'app/src/**/*.kt'
+          ./ktlint --reporter=plain 'app/src/**/*.kt'
         continue-on-error: true
 
       - name: Validar C++ (clang-format)

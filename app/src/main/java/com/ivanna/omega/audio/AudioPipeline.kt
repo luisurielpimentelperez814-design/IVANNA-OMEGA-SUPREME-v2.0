@@ -209,7 +209,7 @@ class AudioPipeline {
         if (rms > 0.001f) {  // Solo clasificar si hay señal real
             // FIX: enviar scores al orquestador nativo
             try {
-                AudioEngine.nativeSetAntiDolbyScoresStatic(speechScore, musicScore, bassScore)
+                AudioEngine.nativeSetAntiDolbyScoresStatic(speechScore, musicScore, bassScore, 0f)
             } catch (_: Exception) {}
         }
     }

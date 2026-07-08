@@ -58,7 +58,7 @@ class IVANNAApplication : Application() {
         appScope.launch {
             try {
                 // 1. DSP nativo
-                DSPBridge.init(sampleRate = 48000)
+                DSPBridge.init(48000)
                 Log.d(TAG, "✅ DSPBridge listo — 48000 Hz")
 
                 // 2. Motor de audio: AudioEngine + Anti-Dolby adaptativo
