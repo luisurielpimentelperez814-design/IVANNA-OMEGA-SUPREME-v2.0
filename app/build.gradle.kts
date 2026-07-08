@@ -130,7 +130,7 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
     // OpenGL ES para visualizer
-    implementation("androidx.opengl:opengl:1.0.0")
+    // implementation("androidx.opengl:opengl:1.0.0") // REMOVED - artifact does not exist
 
     // Testing
     testImplementation("junit:junit:4.13.2")
