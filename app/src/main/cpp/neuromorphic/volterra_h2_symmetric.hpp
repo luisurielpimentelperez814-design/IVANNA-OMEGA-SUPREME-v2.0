@@ -88,6 +88,15 @@ public:
         return m_enabled.load(std::memory_order_acquire);
     }
 
+    /**
+     * Indica si las allocaciones internas del constructor tuvieron éxito.
+     * Con el build en -fno-exceptions, el constructor no lanza: si alguna
+     * allocación falla, deja este flag en false en vez de propagar bad_alloc.
+     */
+    bool isReady() const noexcept {
+        return m_kernels_ready.load(std::memory_order_acquire);
+    }
+
 private:
     uint32_t m_kernel_length;
     uint32_t m_channels;

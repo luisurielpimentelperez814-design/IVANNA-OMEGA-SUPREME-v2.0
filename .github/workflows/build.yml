@@ -218,7 +218,7 @@ jobs:
             fi
           done
         env:
-          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_VERSION }}
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
 
       - name: Empaquetar módulo Magisk
         run: |

@@ -48,7 +48,7 @@ void AntiDolbyState::tick(float dt) {
         std::lock_guard<std::mutex> lk(mtx);
         // Coeficientes RC -> alpha = 1 - exp(-dt / tau)
         float tau = (targetWidener < smoothedWidener) ? attackTau : releaseTau;
-        alpha = 1.0f - std::expf(-dt / tau);
+        alpha = 1.0f - std::exp(-dt / tau);
         smoothedWidener = smoothedWidener + alpha * (targetWidener - smoothedWidener);
     }
     // Publicar el valor suavizado (no espaciado de memory_order estricto requerido)

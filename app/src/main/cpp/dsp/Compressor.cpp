@@ -24,7 +24,7 @@ static inline float fastExp2(float p) noexcept {
 Compressor::Compressor() { reset(); }
 
 void Compressor::reset() {
-    envelope_ = 0.f;
+    env_ = 0.f;
     threshold_ = -18.f;
     ratio_ = 4.0f;
     attackCoef_ = 0.99f;
@@ -76,7 +76,7 @@ void Compressor::process(float* __restrict__ left, float* __restrict__ right, in
     const float inv_atk = inv_atk_, inv_rel = inv_rel_;
     const float slope = slope_, thresh = threshold_;
     const float makeup = makeupGain_;
-    float env = envelope_;
+    float env = env_;
 
     #pragma clang loop vectorize(enable) interleave(enable)
     for (int i = 0; i < frames; ++i) {
@@ -98,7 +98,7 @@ void Compressor::process(float* __restrict__ left, float* __restrict__ right, in
         right[i] *= gain;
     }
 
-    envelope_ = env;
+    env_ = env;
 }
 
 } // namespace ivanna

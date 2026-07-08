@@ -103,10 +103,14 @@ bool neuro_cochlear_manifold_init(
         g_manifold.dsp_client = nullptr;
     }
 
-    try {
-        g_manifold.upsampler = new FIRUpsamplerEngine();
-        g_manifold.volterra = new VolterraH2Symmetric(8192, channels);
-    } catch (...) {
+    // NOTA: build usa -fno-exceptions. FIRUpsamplerEngine y VolterraH2Symmetric
+    // son nothrow-safe (VolterraH2Symmetric deja m_kernels_ready=false si falla
+    // alguna allocación en vez de lanzar), así que basta verificar los punteros.
+    g_manifold.upsampler = new FIRUpsamplerEngine();
+    g_manifold.volterra = new VolterraH2Symmetric(8192, channels);
+
+    if (!g_manifold.upsampler || !g_manifold.volterra ||
+        !g_manifold.volterra->isReady()) {
         delete g_manifold.upsampler; g_manifold.upsampler = nullptr;
         delete g_manifold.volterra;  g_manifold.volterra = nullptr;
         delete g_manifold.dsp_client; g_manifold.dsp_client = nullptr;

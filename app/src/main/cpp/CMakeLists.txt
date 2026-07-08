@@ -80,7 +80,7 @@ add_library(ivanna_omega SHARED
     # ═══════════════════════════════════════════════════════════════════════
     spatial/spatial_engine.cpp
     spatial/room_model.cpp
-    spatial/cue_based_spatial.cpp
+    # cue_based_spatial.hpp es header-only (clase CueBasedSpatial inline), no tiene .cpp
 
     # ═══════════════════════════════════════════════════════════════════════
     #  Evolutionary Kernel — optimización genética offline

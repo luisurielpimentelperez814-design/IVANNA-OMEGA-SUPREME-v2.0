@@ -40,15 +40,17 @@ void ParametricEQ::setBand(int b, float f, float q, float g) noexcept {
 
     float inv_a0 = 1.0f / a0;
 
-    BiquadCoeff coeff;
-    coeff.b0 = b0 * inv_a0;
-    coeff.b1 = b1 * inv_a0;
-    coeff.b2 = b2 * inv_a0;
-    coeff.a1 = a1 * inv_a0;
-    coeff.a2 = a2 * inv_a0;
+    const float nb0 = b0 * inv_a0;
+    const float nb1 = b1 * inv_a0;
+    const float nb2 = b2 * inv_a0;
+    const float na1 = a1 * inv_a0;
+    const float na2 = a2 * inv_a0;
 
-    bandsL[b].setCoeff(coeff);
-    bandsR[b].setCoeff(coeff);
+    bandsL[b].b0 = nb0; bandsL[b].b1 = nb1; bandsL[b].b2 = nb2;
+    bandsL[b].a1 = na1; bandsL[b].a2 = na2;
+
+    bandsR[b].b0 = nb0; bandsR[b].b1 = nb1; bandsR[b].b2 = nb2;
+    bandsR[b].a1 = na1; bandsR[b].a2 = na2;
 }
 
 void ParametricEQ::setParams(const DSPParams& p) noexcept {
@@ -75,7 +77,7 @@ void ParametricEQ::setParams(const DSPParams& p) noexcept {
 }
 
 __attribute__((hot, flatten))
-void ParametricEQ::process(float* __restrict__ left, float* __restrict__ right, int frames) {
+void ParametricEQ::process(float* __restrict__ left, float* __restrict__ right, int frames) noexcept {
     if (frames <= 0) return;
 
     for (int b = 0; b < NUM_BANDS; ++b) {
@@ -84,8 +86,8 @@ void ParametricEQ::process(float* __restrict__ left, float* __restrict__ right, 
 
         #pragma clang loop vectorize(enable) interleave(enable)
         for (int i = 0; i < frames; ++i) {
-            left[i]  = bl.process(left[i]);
-            right[i] = br.process(right[i]);
+            left[i]  = bl.processSample(left[i]);
+            right[i] = br.processSample(right[i]);
         }
     }
 }
