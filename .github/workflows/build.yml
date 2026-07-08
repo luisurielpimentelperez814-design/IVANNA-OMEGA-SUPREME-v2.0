@@ -79,7 +79,6 @@ jobs:
 
       - name: Validar formato Kotlin (ktlint)
         run: |
-          chmod +x gradlew
           curl -sSLO https://github.com/pinterest/ktlint/releases/download/1.2.1/ktlint
           chmod +x ktlint
           ./ktlint --reporter=plain --v2 'app/src/**/*.kt'
@@ -87,7 +86,6 @@ jobs:
 
       - name: Validar C++ (clang-format)
         run: |
-          chmod +x gradlew
           sudo apt-get update && sudo apt-get install -y clang-format
           find app/src/main/cpp -name '*.cpp' -o -name '*.hpp' -o -name '*.h' |             xargs clang-format --dry-run --Werror
         continue-on-error: true
@@ -128,7 +126,6 @@ jobs:
 
       - name: Install NDK ${{ env.NDK_VERSION }}
         run: |
-          chmod +x gradlew
           sdkmanager --install "ndk;${{ env.NDK_VERSION }}"
           echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/${{ env.NDK_VERSION }}" >> $GITHUB_ENV
 
@@ -142,7 +139,6 @@ jobs:
 
       - name: Build APK (${{ matrix.build-type }} / ${{ matrix.abi }})
         run: |
-          chmod +x gradlew
           ./gradlew assemble${{ matrix.build-type == 'release' && 'Release' || 'Debug' }}             -Pandroid.injected.build.abi=${{ matrix.abi }}             --stacktrace
         env:
           ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
@@ -150,7 +146,6 @@ jobs:
       - name: Firmar APK Release
         if: matrix.build-type == 'release'
         run: |
-          chmod +x gradlew
           mkdir -p signing
           echo "${{ secrets.SIGNING_KEY_BASE64 }}" | base64 -d > signing/ivanna.jks
           ${ANDROID_SDK_ROOT}/build-tools/34.0.0/apksigner sign             --ks signing/ivanna.jks             --ks-pass pass:${{ secrets.SIGNING_KEY_PASSWORD }}             --key-pass pass:${{ secrets.SIGNING_KEY_PASSWORD }}             --out app/build/outputs/apk/release/ivanna-omega-supreme-v2.0-${{ matrix.abi }}-signed.apk             app/build/outputs/apk/release/app-release-unsigned.apk
@@ -159,7 +154,6 @@ jobs:
 
       - name: Generar checksums
         run: |
-          chmod +x gradlew
           cd app/build/outputs/apk/${{ matrix.build-type }}
           sha256sum *.apk > SHA256SUMS.txt
 
@@ -194,7 +188,6 @@ jobs:
 
       - name: Install NDK ${{ env.NDK_VERSION }}
         run: |
-          chmod +x gradlew
           sdkmanager --install "ndk;${{ env.NDK_VERSION }}"
           echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/${{ env.NDK_VERSION }}" >> $GITHUB_ENV
 
@@ -208,7 +201,6 @@ jobs:
 
       - name: Compilar librerías nativas para Magisk
         run: |
-          chmod +x gradlew
           # Compilar libivanna_omega.so para cada ABI
           for abi in arm64-v8a armeabi-v7a; do
             echo "Compiling for $abi..."
@@ -230,7 +222,6 @@ jobs:
 
       - name: Empaquetar módulo Magisk
         run: |
-          chmod +x gradlew
           VERSION="2.0.OMNIPOTENTE"
           VARIANT="${{ github.event.inputs.magisk_variant || 'universal' }}"
           OUTPUT="IVANNA-OMEGA-SUPREME-v${VERSION}-${VARIANT}.zip"
@@ -276,19 +267,16 @@ jobs:
 
       - name: Instalar dependencias
         run: |
-          chmod +x gradlew
           sudo apt-get update
           sudo apt-get install -y cmake g++ clang libgtest-dev
 
       - name: Compilar benchmarks
         run: |
-          chmod +x gradlew
           cmake -S app/src/main/cpp/tests             -B build-benchmarks             -DCMAKE_BUILD_TYPE=Release             -DCMAKE_CXX_COMPILER=clang++
           cmake --build build-benchmarks --parallel $(nproc)
 
       - name: Ejecutar benchmarks
         run: |
-          chmod +x gradlew
           cd build-benchmarks
           ctest --output-on-failure
           ./benchmark_suite > benchmark_results.txt 2>&1
