@@ -1,0 +1,3 @@
+#!/sbin/sh
+# This is a placeholder. Magisk replaces this with its own update-binary.
+# The actual update-binary is injected by Magisk during installation.

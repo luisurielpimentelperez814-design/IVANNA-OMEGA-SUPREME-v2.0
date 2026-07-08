@@ -1,0 +1,7 @@
+id=ivanna_omega_supreme
+name=IVANNA OMEGA SUPREME
+version=v2.0.OMNIPOTENTE
+versionCode=2000
+author=Luis Uriel Pimentel Pérez (GORE TNS)
+description=Procesador de audio holografico en tiempo real v2.0 OMNIPOTENTE. Anti-Dolby, NHO engine, Spatial ITD/ILD, AutonomousBrain, Evolutionary Kernel. Compilado con -fno-fast-math para estabilidad numerica garantizada.
+updateJson=https://raw.githubusercontent.com/GORE-TNS/IVANNA-OMEGA-SUPREME/main/update.json

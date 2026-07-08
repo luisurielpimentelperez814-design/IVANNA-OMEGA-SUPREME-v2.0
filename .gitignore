@@ -1,0 +1,38 @@
+# Gradle
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+
+# Android
+*.apk
+*.aab
+*.dex
+*.class
+bin/
+gen/
+out/
+
+# NDK
+obj/
+*.o
+*.so
+*.a
+
+# Magisk build
+magisk_module/libs/
+magisk_module/system/
+*.zip
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keys
+*.jks
+*.keystore
+signing/

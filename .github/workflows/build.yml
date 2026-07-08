@@ -1,0 +1,336 @@
+# IVANNA OMEGA SUPREME v2.0 — GitHub Actions CI/CD
+# © 2026 Luis Uriel Pimentel Pérez — GORE TNS. All rights reserved.
+#
+# Este workflow compila:
+#   1. APK debug y release (arm64-v8a, armeabi-v7a)
+#   2. Módulo Magisk (.zip listo para flashear)
+#   3. Suite de benchmarks host-side
+#   4. Reporte de artefactos con checksums SHA-256
+#
+# Triggers: push a main, pull requests, releases manuales
+
+name: IVANNA OMEGA SUPREME v2.0 Build
+
+on:
+  push:
+    branches: [main, develop]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Tipo de build'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - debug
+          - release
+      magisk_variant:
+        description: 'Variante del módulo Magisk'
+        required: true
+        default: 'universal'
+        type: choice
+        options:
+          - universal
+          - snapdragon_8g2
+          - snapdragon_8g3
+          - exynos_2400
+
+env:
+  JAVA_VERSION: '17'
+  NDK_VERSION: '26.1.10909125'
+  CMAKE_VERSION: '3.22.1'
+  GRADLE_OPTS: >-
+    -Dorg.gradle.jvmargs=-Xmx6g
+    -Dorg.gradle.daemon=false
+    -Dorg.gradle.workers.max=4
+
+jobs:
+  # ==========================================================================
+  # JOB 1: Validación de código y tests unitarios
+  # ==========================================================================
+  validate:
+    name: 🔍 Validación & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+
+      - name: Validar formato Kotlin (ktlint)
+        run: |
+          curl -sSLO https://github.com/pinterest/ktlint/releases/download/1.2.1/ktlint
+          chmod +x ktlint
+          ./ktlint --reporter=plain --v2 'app/src/**/*.kt'
+        continue-on-error: true
+
+      - name: Validar C++ (clang-format)
+        run: |
+          sudo apt-get update && sudo apt-get install -y clang-format
+          find app/src/main/cpp -name '*.cpp' -o -name '*.hpp' -o -name '*.h' |             xargs clang-format --dry-run --Werror
+        continue-on-error: true
+
+      - name: Tests unitarios Kotlin
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: app/build/test-results/
+
+  # ==========================================================================
+  # JOB 2: Build APK (Debug + Release)
+  # ==========================================================================
+  build-apk:
+    name: 📱 Build APK
+    needs: validate
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build-type: [debug, release]
+        abi: [arm64-v8a, armeabi-v7a]
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK ${{ env.NDK_VERSION }}
+        run: |
+          sdkmanager --install "ndk;${{ env.NDK_VERSION }}"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/${{ env.NDK_VERSION }}" >> $GITHUB_ENV
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+
+      - name: Build APK (${{ matrix.build-type }} / ${{ matrix.abi }})
+        run: |
+          ./gradlew assemble${{ matrix.build-type == 'release' && 'Release' || 'Debug' }}             -Pandroid.injected.build.abi=${{ matrix.abi }}             --stacktrace
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+
+      - name: Firmar APK Release
+        if: matrix.build-type == 'release'
+        run: |
+          mkdir -p signing
+          echo "${{ secrets.SIGNING_KEY_BASE64 }}" | base64 -d > signing/ivanna.jks
+          ${ANDROID_SDK_ROOT}/build-tools/34.0.0/apksigner sign             --ks signing/ivanna.jks             --ks-pass pass:${{ secrets.SIGNING_KEY_PASSWORD }}             --key-pass pass:${{ secrets.SIGNING_KEY_PASSWORD }}             --out app/build/outputs/apk/release/ivanna-omega-supreme-v2.0-${{ matrix.abi }}-signed.apk             app/build/outputs/apk/release/app-release-unsigned.apk
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+
+      - name: Generar checksums
+        run: |
+          cd app/build/outputs/apk/${{ matrix.build-type }}
+          sha256sum *.apk > SHA256SUMS.txt
+
+      - name: Upload APK artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ivanna-apk-${{ matrix.build-type }}-${{ matrix.abi }}
+          path: |
+            app/build/outputs/apk/${{ matrix.build-type }}/*.apk
+            app/build/outputs/apk/${{ matrix.build-type }}/SHA256SUMS.txt
+          retention-days: 90
+
+  # ==========================================================================
+  # JOB 3: Build Módulo Magisk
+  # ==========================================================================
+  build-magisk:
+    name: 🧲 Build Módulo Magisk
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK ${{ env.NDK_VERSION }}
+        run: |
+          sdkmanager --install "ndk;${{ env.NDK_VERSION }}"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/${{ env.NDK_VERSION }}" >> $GITHUB_ENV
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+
+      - name: Compilar librerías nativas para Magisk
+        run: |
+          # Compilar libivanna_omega.so para cada ABI
+          for abi in arm64-v8a armeabi-v7a; do
+            echo "Compiling for $abi..."
+            mkdir -p magisk_module/system/lib64 magisk_module/system/lib
+
+            # Usar CMake directo con toolchain del NDK
+            cmake -S app/src/main/cpp               -B build-magisk-$abi               -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake               -DANDROID_ABI=$abi               -DANDROID_PLATFORM=android-29               -DCMAKE_BUILD_TYPE=Release
+
+            cmake --build build-magisk-$abi --parallel $(nproc)
+
+            if [ "$abi" = "arm64-v8a" ]; then
+              cp build-magisk-$abi/libivanna_omega.so magisk_module/system/lib64/
+            else
+              cp build-magisk-$abi/libivanna_omega.so magisk_module/system/lib/
+            fi
+          done
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_VERSION }}
+
+      - name: Empaquetar módulo Magisk
+        run: |
+          VERSION="2.0.OMNIPOTENTE"
+          VARIANT="${{ github.event.inputs.magisk_variant || 'universal' }}"
+          OUTPUT="IVANNA-OMEGA-SUPREME-v${VERSION}-${VARIANT}.zip"
+
+          # Actualizar module.prop
+          cat > magisk_module/module.prop << EOF
+          id=ivanna_omega_supreme
+          name=IVANNA OMEGA SUPREME
+          version=v${VERSION}
+          versionCode=2000
+          author=Luis Uriel Pimentel Pérez (GORE TNS)
+          description=Procesador de audio holográfico en tiempo real v2.0 OMNIPOTENTE. Anti-Dolby, NHO, Spatial ITD/ILD, AutonomousBrain.
+          updateJson=https://raw.githubusercontent.com/${{ github.repository }}/main/update.json
+          EOF
+
+          # Crear ZIP del módulo
+          cd magisk_module
+          zip -r9 ../${OUTPUT} . -x "*.git*" "*.DS_Store"
+          cd ..
+
+          # Checksum
+          sha256sum ${OUTPUT} > ${OUTPUT}.sha256
+
+      - name: Upload Magisk artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ivanna-magisk-module
+          path: |
+            IVANNA-OMEGA-SUPREME-*.zip
+            IVANNA-OMEGA-SUPREME-*.zip.sha256
+          retention-days: 90
+
+  # ==========================================================================
+  # JOB 4: Benchmarks Host-Side
+  # ==========================================================================
+  benchmark:
+    name: ⚡ Benchmarks Host-Side
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Instalar dependencias
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ clang libgtest-dev
+
+      - name: Compilar benchmarks
+        run: |
+          cmake -S app/src/main/cpp/tests             -B build-benchmarks             -DCMAKE_BUILD_TYPE=Release             -DCMAKE_CXX_COMPILER=clang++
+          cmake --build build-benchmarks --parallel $(nproc)
+
+      - name: Ejecutar benchmarks
+        run: |
+          cd build-benchmarks
+          ctest --output-on-failure
+          ./benchmark_suite > benchmark_results.txt 2>&1
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            build-benchmarks/benchmark_results.txt
+            build-benchmarks/Testing/
+
+  # ==========================================================================
+  # JOB 5: Release (solo en tags)
+  # ==========================================================================
+  release:
+    name: 🚀 Crear Release
+    needs: [build-apk, build-magisk, benchmark]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Crear Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/**/*.apk
+            artifacts/**/*.zip
+            artifacts/**/SHA256SUMS.txt
+          body: |
+            ## IVANNA OMEGA SUPREME v2.0 OMNIPOTENTE
+
+            ### Cambios principales
+            - Pipeline unificado con ControlFrameBus (seqlock SPSC)
+            - AutonomousBrain v2.0: detección de BPM, silencio, género mejorada
+            - Limiter omnipotente: branchless + soft-saturation parabólica
+            - Anti-Dolby dinámico basado en scores YAMNet
+            - Build sin `-ffast-math`: estabilidad numérica garantizada
+
+            ### Artefactos
+            - APK firmado (arm64-v8a, armeabi-v7a)
+            - Módulo Magisk universal + variantes SoC
+            - Benchmarks host-side con resultados
+
+            ### Checksums
+            Verificar integridad con `sha256sum -c SHA256SUMS.txt`
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
